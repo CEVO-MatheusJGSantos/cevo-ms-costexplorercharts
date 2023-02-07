@@ -1,4 +1,4 @@
-#!/home/matheus.santos/Projects/Cevo/cevo-ms-costexplorercharts/lib/CostExplorerChartsFunction/env/bin/python3
+#!/home/matheussantos/Projects/Cevo/cevo-ms-costexplorercharts/lib/CostExplorerChartsFunction/env/bin/python3
 
 import sys
 import json

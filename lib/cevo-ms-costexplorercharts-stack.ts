@@ -9,20 +9,24 @@ export class CevoMsCostexplorerchartsStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const CostExplorerChartsRole = new awsIam.Role(this, 'CostExplorerChartsRole'{
+    new awsLambda.DockerImageFunction(this, 'AssetFunction', {
+      code: awsLambda.DockerImageCode.fromImageAsset(path.join(__dirname, 'CostExplorerChartsFunction')),
+    });
+
+    const CostExplorerChartsRole = new awsIam.Role(this, 'CostExplorerChartsRole',{
       assumedBy: new awsIam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
     CostExplorerChartsRole.addManagedPolicy(awsIam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole"));
     // CostExplorerChartsRole.addManagedPolicy(awsIam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaVPCAccessExecutionRole"));
-    CostExplorerChartsRole.addToPolicy()
+    // CostExplorerChartsRole.addToPolicy()
 
-    const CostExplorerChartsFunction = new awsLambda.Function(this, 'CostExploreCharts', {
-      runtime: awsLambda.Runtime.PYTHON_3_9,
-      handler: 'lambda_function.handler',
-      role: CostExplorerChartsRole,
-      timeout: cdk.Duration.minutes(15),
-      code: awsLambda.Code.fromAsset(path.join(__dirname, 'CostExplorerChartsFunction')) //, {
+    // const CostExplorerChartsFunction = new awsLambda.Function(this, 'CostExploreCharts', {
+    //   runtime: awsLambda.Runtime.PYTHON_3_9,
+    //   handler: 'lambda_function.handler',
+    //   role: CostExplorerChartsRole,
+    //   timeout: cdk.Duration.minutes(15),
+    //   code: awsLambda.Code.fromAsset(path.join(__dirname, 'CostExplorerChartsFunction')) //, {
         // bundling:{
         //   image: awsLambda.Runtime.PYTHON_3_9.bundlingImage,
         //   command: [
@@ -30,12 +34,6 @@ export class CevoMsCostexplorerchartsStack extends cdk.Stack {
         //   ],
         // },
       // })
-    });
-
-    CostExplorerChartsFunction.addLayers()
-
-    
-
-
+    // });
   }
 }

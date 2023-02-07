@@ -11,19 +11,18 @@ from datetime import datetime, date, time, timedelta
 logger = logging.getLogger()
 
 # Fetchs data from Cost Exporer 
-def getUsageCostByService(this, period, granularity, startDate, endDate):
-    this.period = period
-    this.granularity = granularity
-    this.startDate = startDate
-    this.endDate = endDate
-
+def getUsageCostByService(period, granularity, startDate, endDate):
+    # this.period = period
+    # this.granularity = granularity
+    # this.startDate = startDate
+    # this.endDate = endDate
     CostExplorerClient = boto3.client('ce')
     UsageCost = CostExplorerClient.get_cost_and_usage(
             TimePeriod={
-                'Start': this.startDate,
-                'End': this.endDate
+                'Start': startDate,
+                'End': endDate
             },
-            Granularity=this.granularity,
+            Granularity=granularity,
             Metrics=['UnblendedCost'],
             GroupBy=[
                 {
@@ -40,7 +39,6 @@ def getUsageCostByService(this, period, granularity, startDate, endDate):
                 }
             }
         )
-        
     CostExplorerClient.close()
     return UsageCost['ResultsByTime']
 
@@ -49,33 +47,28 @@ def plotLines(dataFrame,dataframeIndex, totalsArray):
     sns.set_theme()
     ax = dataFrame.plot(linewidth=2.5)
     handles,labels = ax.get_legend_handles_labels()
-
     ax.legend(handles, labels,loc='upper left', bbox_to_anchor=(-0.35,1), fancybox=True, shadow=True)
     totalsTable=plt.table(cellText=[["$%.2f" % number for number in totalsArray.values]], colLabels=list(dataframeIndex),cellLoc='center')
     ax.set_title('Usage cost by service')
     ax.set_ylabel('USD$')
     ax.add_table(totalsTable)
     ax.grid(color='w',axis='both')
-
     Size = plt.gcf().get_size_inches()
     plt.gcf().set_size_inches(Size[0]*3, Size[1]*2, forward=True) 
     plt.xticks([]) # remove the x_axys labels
     plt.figure(1).tight_layout()
-
     return plt
 
 def plotPie(dataFrame):
     fig, ax = plt.subplots(figsize=(6, 3), subplot_kw=dict(aspect="equal"))
     bbox_props = dict(boxstyle="square,pad=0.3", fc="w", ec="k", lw=0.72)
     kw = dict(arrowprops=dict(arrowstyle="-"),bbox=bbox_props, zorder=0, va="center")
-
     def make_autopct(values):
         def my_autopct(pct):
             total = sum(values)
             val = float((pct*total/100.0))
             return '${v:.2f}\n({p:.2f}%)'.format(v=val,p=pct)
         return my_autopct
-
     wedges, texts, autotext = ax.pie(
         list(dataFrame.values[0]), 
         autopct=make_autopct(list(dataFrame.values[0])),
@@ -83,7 +76,6 @@ def plotPie(dataFrame):
         wedgeprops=dict(width=0.6), 
         startangle=15, 
         textprops=dict(color="k"))
-
     for i, p in enumerate(wedges):
         ang = (p.theta2 - p.theta1)/2. + p.theta1
         y = np.sin(np.deg2rad(ang))
@@ -92,13 +84,11 @@ def plotPie(dataFrame):
         connectionstyle = "angle,angleA=0,angleB={}".format(ang)
         kw["arrowprops"].update({"connectionstyle": connectionstyle})
         ax.annotate(dataFrame.columns[i], xy=(x, y), xytext=(1.35*np.sign(x), 1.2*y),horizontalalignment=horizontalalignment, **kw)
-
-        ax.set_title('Usage cost by service - '+(date.today()).strftime('%B %Y'))
-        Size = plt.gcf().get_size_inches()
-        plt.gcf().set_size_inches(Size[0]*3, Size[1]*4, forward=True) 
-        plt.figure(1).tight_layout()
-
-        return plt
+    ax.set_title('Usage cost by service - '+(date.today()).strftime('%B %Y'))
+    Size = plt.gcf().get_size_inches()
+    plt.gcf().set_size_inches(Size[0]*3, Size[1]*4, forward=True) 
+    plt.figure(1).tight_layout()
+    return plt
 
 def plotBars(dataFrame):
     sns.set_theme()
@@ -117,6 +107,8 @@ def plotBars(dataFrame):
     plt.xticks([]) # remove the x_axys labels
     plt.figure(1).tight_layout()
 
+    return plt
+
 def handler(event, context):
 
     if 'period' in event:
@@ -127,14 +119,14 @@ def handler(event, context):
     if 'startDate' in event:
         startDate = event.get('startDate')
     else:
-        startdate = None
+        startDate = None
 
     if 'endDate' in event:
         endDate = event.get('endDate')
     else:
         endDate = None
 
-    if 'granullarity' in event:
+    if 'granularity' in event:
         granularity = event.get('granularity')
     else:
         granularity = None
@@ -173,36 +165,39 @@ def handler(event, context):
     UsageCostDataframe=pd.DataFrame(UsageCostData, index=DataframeIndex)
 
     # Iterates through the data returned by the cost explorer API and updates the values for each service by datapoint
-    for period in DataframeIndex:
-        id=np.where(DataframeIndex==period)[0][0]
+    for timeStamp in DataframeIndex:
+        id=np.where(DataframeIndex==timeStamp)[0][0]
         for value in UsageCost[id]['Groups']:
             for ServiceName in value['Keys']:
-                UsageCostDataframe[ServiceName][period]=float(value['Metrics']['UnblendedCost']['Amount'])
+                UsageCostDataframe[ServiceName][timeStamp]=float(value['Metrics']['UnblendedCost']['Amount'])
 
 
     # Summarize total values per period
     newTotalsArray=UsageCostDataframe.sum(axis=1)
 
     #Define the minimum value threshold for the services
-    valueThreshold = (np.mean(newTotalsArray.values)*0.1)
+    valueThreshold = (np.mean(newTotalsArray.values)*0.01) # Should be 0.01 for monthly report
 
     # Summarizes all values below the threshold into a single "Others" column
     UsageCostDataframe['Others']=UsageCostDataframe[UsageCostDataframe.columns[UsageCostDataframe.sum()<valueThreshold]].sum(axis=1).values
 
     # Creating a new dataframe with only values above the threshold
     TopUsageCostDataframe=UsageCostDataframe[UsageCostDataframe.columns[UsageCostDataframe.sum() > valueThreshold]]
+    
+    print("period: {}, startDate: {}, endDate: {}, granularity: {}".format(period,startDate,endDate,granularity))
 
-    if chartType in event:
+
+    if 'chartType' in event:
         chartType = event.get('chartType')
     else:
         if period == 'Weekly':
             chartType = 'BarChart'
-            costExplorerChart = plotBars(TopUsageCostDataframe, DataframeIndex, newTotalsArray)
+            costExplorerChart = plotLines(TopUsageCostDataframe, DataframeIndex, newTotalsArray)
         if period == 'Monthly':
             chartType = 'PieChart'
             costExplorerChart = plotPie(TopUsageCostDataframe)
 
-
+    print("costExplorerChart: {}".format(costExplorerChart))
     if costExplorerChart:
         ### Send the file to S3 bucket
         import io
@@ -213,12 +208,14 @@ def handler(event, context):
 
         s3 = boto3.resource('s3')
         fileUpload = s3.Object('cevo-ms-reporting-test',chartFileName).put(Body=piechartFigure.getvalue(),ContentType='image/png')
+        print(fileUpload)
         #s3.ObjectAcl('cevo-ms-reporting-test','picture.png').put(ACL='public-read')
 
         if fileUpload['ResponseMetadata']['HTTPStatusCode'] == 200:
         #Generates a pre-signed UP to access the object
             s3Client = boto3.client('s3')
             shareUrl = s3Client.generate_presigned_url('get_object',Params={'Bucket': 'cevo-ms-reporting-test','Key':chartFileName})
+            print(shareUrl)
 
-            return {shareUrl}
+            return shareUrl
 
