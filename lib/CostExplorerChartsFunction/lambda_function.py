@@ -113,8 +113,8 @@ def handler(event, context):
 
     if 'period' in event:
         period = event.get('period')
-    # else:
-    #     logger.error("Missing period info from event")
+    else:
+        logger.error("Missing period info from event")
 
     if 'startDate' in event:
         startDate = event.get('startDate')
@@ -132,11 +132,11 @@ def handler(event, context):
         granularity = None
 
     if startDate is None and endDate is None and granularity is None:
-        if period == 'Weekly':
+        if 'Weekly' in period:
             startDate = str(date.today() - timedelta(8))
             endDate= str(date.today()- timedelta(1))
             granularity = 'DAILY'
-        elif period == "Montly":
+        elif "Monthly" in period:
             firstDay = datetime.today().replace(day=1)
             previousMonthLastDay = ((firstDay - timedelta(days=1)).replace(hour=23,minute=59,second=59))
             previousMonthFirstDay = (previousMonthLastDay.replace(day=1,hour=0,minute=0,second=0))
@@ -215,7 +215,7 @@ def handler(event, context):
         #Generates a pre-signed UP to access the object
             s3Client = boto3.client('s3')
             shareUrl = s3Client.generate_presigned_url('get_object',Params={'Bucket': 'cevo-ms-reporting-test','Key':chartFileName})
-            print(shareUrl)
-
+            # print(shareUrl)
+            result = "File URL: {}".format(shareUrl)
             return shareUrl
 

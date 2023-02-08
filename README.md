@@ -1,14 +1,35 @@
-# Welcome to your CDK TypeScript project
+# Cost Explorer charts
 
-This is a blank project for CDK development with TypeScript.
+## Pre-requisites
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+ - AWS CLI v2x
+ - Python3 3.9x
+ - NPM v8.x
+ - Node v18.x
+ - AWS CDK v2.x
+ - Docker service v20.x (optional)
 
-## Useful commands
+## Testing the function locally (optional)
 
-* `npm run build`   compile typescript to js
-* `npm run watch`   watch for changes and compile
-* `npm run test`    perform the jest unit tests
-* `cdk deploy`      deploy this stack to your default AWS account/region
-* `cdk diff`        compare deployed stack with current state
-* `cdk synth`       emits the synthesized CloudFormation template
+### Create a docker image with the lambda function code:
+
+```
+docker build -t costexplorercharts ./lib/CostExplorerChartsFunction/
+```
+
+### Add the AWS credential details on the ```lib/CostExplorerChartsFunction/env.txt``` file:
+```
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_SESSION_TOKEN=
+```
+
+### Launch the test container
+```
+docker run -p 9000:8080 --rm --env-file ./env.txt docker run -p 9000:8080 --rm --env-file ./env.txt lamda_function:latest
+```
+### Invoke the function using the ```curl``` command
+```
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"period":"Weekly"}'
+```
+
