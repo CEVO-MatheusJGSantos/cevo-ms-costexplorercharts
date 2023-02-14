@@ -184,6 +184,10 @@ def handler(event, context):
     # Creating a new dataframe with only values above the threshold
     TopUsageCostDataframe=UsageCostDataframe[UsageCostDataframe.columns[UsageCostDataframe.sum() > valueThreshold]]
     
+    # Sort the values in descending order
+    TopUsageCostDataframe = TopUsageCostDataframe.sort_values(by=TopUsageCostDataframe.index[0],axis=1,ascending=False)
+
+    
     print("period: {}, startDate: {}, endDate: {}, granularity: {}".format(period,startDate,endDate,granularity))
 
 
