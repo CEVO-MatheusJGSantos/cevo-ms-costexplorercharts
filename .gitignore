@@ -1,4 +1,4 @@
 node_modules/*
-lib/CostExplorerChartsFunction/env/lib/*
+lib/CostExplorerChartsFunction/env/*
 cdk.out/*
 lib/CostExplorerChartsFunction/env.txt
